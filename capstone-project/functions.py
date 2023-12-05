@@ -31,17 +31,17 @@ def NextState(currentConfig, velocities, timestep, maxAngularSpeedWheel, maxAngu
     l = 0.47/2
     F = [[-1/(l+w), 1/(l+w), 1/(l+w), -1/(l+w)], [1,1,1,1], [-1,1,-1,1]]
     F = np.dot(r/4,F)
-    print(F)
+    #print(F)
     deltaTheta = [[velocities[0]*timestep],[velocities[1]*timestep],[velocities[2]*timestep],[velocities[3]*timestep]]
-    print(deltaTheta)
+    #print(deltaTheta)
     Vb = np.dot(F,deltaTheta).flatten()
-    print(Vb)
+    #print(Vb)
     Vb6 = [0,0,Vb[0],Vb[1],Vb[2],0]
     if abs(Vb[0]) < 1e-6:
         deltaQb = [0,Vb[1],Vb[2]]
     else:
         deltaQb = [Vb[0],(Vb[1]*m.sin(Vb[0]) + Vb[2]*(m.cos(Vb[0])-1))/Vb[0],(Vb[2]*m.sin(Vb[0]) + Vb[1]*(1-m.cos(Vb[0])))/Vb[0]]
-    print(deltaQb)
+    #print(deltaQb)
     transfMat = [[1,0,0],
                  [0,m.cos(currentConfig[0]),-m.sin(currentConfig[0])],
                  [0,m.sin(currentConfig[0]),m.cos(currentConfig[0])]]
@@ -62,7 +62,7 @@ def testNextState():
     while i < 100:
         currentConfig = NextState(currentConfig,velocities,timestep,maxAngSpeed,maxArmSpeed)
         vector = np.concatenate([currentConfig,[0]])
-        with open('./steps.csv', 'a') as f:
+        with open('./teststeps.csv', 'a') as f:
             writer = csv.writer(f)
             writer.writerow(vector)
         i+=1
@@ -86,6 +86,7 @@ def TrajectoryGenerator(T_se_in,T_sc_in,T_sc_fin,T_ce_grasp,T_ce_standoff,k):
         traj7.append(traj6[-1])
     traj8 = mr.ScrewTrajectory(traj6[-1],T_se_standoff_fin,Tf,Tf*k/0.01,5)
     trajectories = [traj1,traj2,traj3,traj4,traj5,traj6,traj7,traj8]
+    trajectories_matrix = []
     for traj in trajectories:
         for T in traj:
             r11 = T[0][0]
@@ -107,10 +108,12 @@ def TrajectoryGenerator(T_se_in,T_sc_in,T_sc_fin,T_ce_grasp,T_ce_standoff,k):
                 gripper_status = 1
 
             row_trajectory = [r11,r12,r13,r21,r22,r23,r31,r32,r33,px,py,pz,gripper_status]
+            trajectories_matrix.append(row_trajectory)
 
             with open('./trajectories.csv', 'a') as f:
                 writer = csv.writer(f)
                 writer.writerow(row_trajectory)
+    return trajectories,trajectories_matrix
 
 def testTrajectoryGeometry():
     T_sc_in = [[1,0,0,1],[0,1,0,0],[0,0,1,0.025],[0,0,0,1]]
@@ -123,7 +126,7 @@ def testTrajectoryGeometry():
 
 def FeedbackControl(X,Xd,Xd_next,Kp,Ki,Dt,error_integral):
     Vd = []
-    if not error_integral:
+    if np.all(error_integral==None):
         error_integral = np.zeros(6)
     X_err = logm(np.dot(np.linalg.inv(X),Xd))
     X_err_vec = mr.se3ToVec(X_err)
@@ -131,7 +134,7 @@ def FeedbackControl(X,Xd,Xd_next,Kp,Ki,Dt,error_integral):
     Vd_b = np.dot((1/Dt),logm(np.dot(np.linalg.inv(Xd),Xd_next)+ 1e-10))
     Vd = mr.se3ToVec(Vd_b)
     V = np.dot(mr.Adjoint(np.dot(np.linalg.inv(X),Xd)),Vd) + np.dot(Kp,X_err_vec) + np.dot(Ki,error_integral)
-    return V
+    return V,X_err_vec,error_integral
 
 
 def CalculateJacobian(posConfig,armConfig):
@@ -184,7 +187,7 @@ def testControlandJacobian():
     Xd = [[0,0,1,0.5],[0,1,0,0],[-1,0,0,0.5],[0,0,0,1]]
     Xd_next = [[0,0,1,0.6],[0,1,0,0],[-1,0,0,0.3],[0,0,0,1]]
     X = [[0.170,0,0.985,0.387],[0,1,0,0],[-0.985,0,0.170,0.570],[0,0,0,1]]
-    Kp = np.zeros((6,6))
+    Kp = np.eye(6)
     Ki = np.zeros((6,6))
     Dt = 0.01
     V = FeedbackControl(X,Xd,Xd_next,Kp,Ki,Dt,error_integral=None)
@@ -192,9 +195,8 @@ def testControlandJacobian():
     Je = np.array(CalculateJacobian(robotConfig[:3],robotConfig[3:]))
     #print(Je)
     speeds = CalculateSpeeds(Je,V)
-    print(np.shape(speeds))
+    print(speeds)
 
-testControlandJacobian()
 
 
 
