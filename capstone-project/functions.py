@@ -197,6 +197,13 @@ def testControlandJacobian():
     speeds = CalculateSpeeds(Je,V)
     print(speeds)
 
+def calculateT(robotConfig):
+    [T_sb,T_b0,M0_e,Blist] = calculate_geometry(robotConfig[0],robotConfig[1],robotConfig[2])
+    T_s0 = np.dot(T_sb,T_b0)
+    thetalist = robotConfig[3:8]
+    T_0e = mr.FKinBody(M0_e,Blist,thetalist)
+    T_se = np.dot(T_s0,T_0e)
+    return T_se
 
 
 
