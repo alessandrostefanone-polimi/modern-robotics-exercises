@@ -23,6 +23,7 @@ To use this script, simply run it in a Python environment with the necessary dep
 Output
 
 The script generates a plot of the error over time, saved as ‘X_err.png’. It also writes the robot configuration and error at each step to ‘steps.csv’ and ‘error.csv’ files, respectively.
+
 Note
 
 This script is a basic implementation of a robot control system. Depending on the specific robot and task, you may need to adjust the transformation matrices, robot configuration, and gain matrices. You may also need to implement additional safety checks and control strategies. Always test the script in a safe environment before using it to control a real robot.
